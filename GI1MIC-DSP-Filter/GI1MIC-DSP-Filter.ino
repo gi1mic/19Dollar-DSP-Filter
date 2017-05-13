@@ -33,7 +33,19 @@ AudioConnection          patchCord5(audioOutputMixer, audioOutput);
  * at https://www.pjrc.com/teensy/gui/index.html - while it can be edited by hand 
  * the tool can import the code above allowing you to edit it inside a GUI tool.
  * 
+ * 
+ * Version 1.1
+ * Code Tidy-up 
+ * Smaller (lower quality) voice prompts
+ * Debug and FT817 mode controlled via defines
+ * 
+ * Version 1.0 
+ * Inital release which had no version number
  */
+
+#define DEBUG                               // Uncomment for debug information
+#define FT817                               // Uncomment for FT817 else enable pullups for filter select via a button
+
 
 #include <Bounce.h>
 #include "filters.h"
@@ -43,7 +55,7 @@ AudioConnection          patchCord5(audioOutputMixer, audioOutput);
 
 
 // FIR filter selection (Toggle low to select next)
-#define FILTER_PIN 0
+#define SELECT_PIN    0                     // Pin to use for filter selection
 
 // Installed filters ID's
 #define PASSTHRU  0
@@ -52,7 +64,7 @@ AudioConnection          patchCord5(audioOutputMixer, audioOutput);
 
 // Single filter structure
 struct fir_filter {
-  short *coeffs;
+  const short int *coeffs;
   short num_coeffs;
   short type;
 };
@@ -61,23 +73,20 @@ struct fir_filter {
 struct fir_filter fir_list[] = {
   {NULL,      0, PASSTHRU},                   // Passthru mode (special case)
   {bandpassMorse, bandpassMorseLen, MORSE},
-  {bandpassSSB, bandpassSSBLen, SSB},
-  {NULL,      1, NULL}                        // End of list marker
+  {bandpassSSB, bandpassSSBLen, SSB}
 };
 
 int fir_idx = 0;                              // index of current selected filter
 
-Bounce b_filter   = Bounce(FILTER_PIN,15);    // debounce the filter switching pin
+Bounce filterSelect = Bounce(SELECT_PIN, 15); // debounce the filter switching pin
 unsigned long last_time = millis();           // Timer var used for debugging
 
 //---------------------------------------------------------------
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   delay(300);
 
-  pinMode(FILTER_PIN, INPUT);
-
-  AudioMemory(6);
+  AudioMemory(8);
   
   // Initialize the filter
   myFilter.begin(fir_list[0].coeffs, fir_list[0].num_coeffs);
@@ -92,6 +101,12 @@ void setup() {
 
   myFilter.begin(FIR_PASSTHRU, 0);  // Start in passthru mode
 
+  #ifdef FT817
+    pinMode(SELECT_PIN, INPUT);
+  #else
+    pinMode(SELECT_PIN, INPUT_PULLUP);
+  #endif
+
   Serial.println("setup done");
 }
 
@@ -100,13 +115,11 @@ void setup() {
 void loop()
 {
 
-  b_filter.update();                    // read the button state
-  
-  if (b_filter.fallingEdge()) {         // On button press - switch to next filter in the list
-    fir_idx++;
+  filterSelect.update();                    // read the button state
 
-    // end of array, then loop
-    if (fir_list[fir_idx].num_coeffs == 1) fir_idx = 0; 
+  if (filterSelect.fallingEdge()) {         // On button press - switch to next filter in the list
+    if (++fir_idx >= (sizeof(fir_list) / sizeof(fir_filter)))
+      fir_idx = 0;                          // end of array, then loop
 
     if (fir_list[fir_idx].type == MORSE) {
         myFilter.begin(fir_list[fir_idx].coeffs, fir_list[fir_idx].num_coeffs);
@@ -125,6 +138,9 @@ void loop()
     }
   }
 
+
+
+#ifdef DEBUG
   // print debug and resource usage
   if (millis() - last_time >= 2500) {
     if ( audioInputPeak.available() ) {
@@ -143,6 +159,7 @@ void loop()
     Serial.println(")");
     last_time = millis();
   }
+#endif
 }
 
 //---------------------------------------------------------------
@@ -155,11 +172,11 @@ void speak(const unsigned int* audioSample) {
 
 //---------------------------------------------------------------
 void muteRadio() {
-        audioOutputMixer.gain(0, 0.0); // Radio audio
+        audioOutputMixer.gain(0, 0.0); // Mute radio audio
 }
 
 //---------------------------------------------------------------
 void unMuteRadio() {
-        audioOutputMixer.gain(0, 1.0); // Radio audio
+        audioOutputMixer.gain(0, 1.0); // Unmute radio audio
 
 }
