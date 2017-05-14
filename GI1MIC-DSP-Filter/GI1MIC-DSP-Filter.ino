@@ -33,6 +33,10 @@ AudioConnection          patchCord5(audioOutputMixer, audioOutput);
  * at https://www.pjrc.com/teensy/gui/index.html - while it can be edited by hand 
  * the tool can import the code above allowing you to edit it inside a GUI tool.
  * 
+ * Version 1.2
+ * This update changes the Morse coefficients to an improved set based on a Windowed hamming FIR filter. 
+ * See the https://gi1mic.github.io/ for a MATLAB simulation of the filter. 
+ * Note: this is a very sharp filter - you may want to generate your own!
  * 
  * Version 1.1
  * Code Tidy-up 
@@ -40,7 +44,7 @@ AudioConnection          patchCord5(audioOutputMixer, audioOutput);
  * Debug and FT817 mode controlled via defines
  * 
  * Version 1.0 
- * Inital release which had no version number
+ * Initial release which had no version number
  */
 
 #define DEBUG                               // Uncomment for debug information
