@@ -12,7 +12,10 @@
  * This project is for installing into a Yaesu FT-817 but easily be adapted 
  * for many other radios.
  * 
-* Version 2.1
+ * Version 2.1a
+ *  Added a FIFO to the morse 2 speech decode to improve decoding when using SD card playback
+ *  
+ * Version 2.1
  *  Minor bug fixes
  *  Configuration options now held in "settings.h"
  *  Added option to say callsign on boot
@@ -87,8 +90,8 @@ void setup() {
 
       SPI.setMOSI(SDCARD_MOSI_PIN);
       SPI.setSCK(SDCARD_SCK_PIN);
-      boolean status = card.init(SPI_FULL_SPEED, SDCARD_CS_PIN);
   #ifdef DEBUG
+        boolean status = card.init(SPI_FULL_SPEED, SDCARD_CS_PIN);
         if (status) {
             Serial.println("SD card is connected :-)");
         } else {
@@ -218,6 +221,7 @@ void loop()
     }
   #endif
   serviceCAT();
+  serviceSpeech();
 
   #ifdef DECODER
       if (filterList[filterIndex].filterID == MORSEDECODE) {    // Service morse decoding

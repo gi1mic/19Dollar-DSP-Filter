@@ -127,7 +127,8 @@ void printCharacter() {
   #ifdef DECODER_SERIAL
       Serial.print(mySet[myNum]);                   // Print the letter
   #endif
-  speakChar(mySet[myNum]);
+  //speakChar(mySet[myNum]);
+  speechBuffer_push(mySet[myNum]);
 }
 
 

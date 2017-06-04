@@ -222,4 +222,7 @@ void speak(const unsigned int* audioSample);
 void muteRadio();
 void unMuteRadio();
 void lowerRadio();
+void speechBuffer_push(char c);
+void serviceSpeech();
+
 #endif

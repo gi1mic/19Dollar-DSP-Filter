@@ -68,7 +68,7 @@ const uint8_t* ascii2lpc[] = {
 //---------------------------------------------------------------------------------
 void speakChar(char c) {
     #ifdef FT817                        // Use LPC to say the character
-        voice.say(ascii2lpc[(int)c]);
+   //     voice.say(ascii2lpc[(int)c]);
     #else                               // Otherwise we can use WAV files stored on a SD card
         char s[15];
         if (c == '/') {
@@ -106,9 +106,9 @@ void speakSD(const char *filename) {
             Serial.println(filename);
         #endif
         audioPromptSD.play(filename);
-        delay(40);
+        delay(3);                       // This delay is important!
         while (audioPromptSD.isPlaying()) {
-          delay(40);
+          delay(5);
         };
 #endif
 }
@@ -128,5 +128,66 @@ void lowerRadio() {
         audioOutputMixer.gain(0, 0.1); // Lower the radio volume to allow speach at same time
 }
 
+
+// Speech FIFO
+#define SPEECH_BUF_SZ     8  
+char speechBuffer[SPEECH_BUF_SZ];
+int speechReadPointer   = 0;
+int speechWritePointer  = 0;
+int speechCount = 0;
+
+
+//---------------------------------------------------------------------
+void speechBuffer_push(char c) {
+
+  if (speechCount >= SPEECH_BUF_SZ - 1) // If we are about to overflow the buffer, drop the char
+      return;
+  speechCount++;
+  speechBuffer[speechWritePointer++] = c;
+  speechWritePointer &= (SPEECH_BUF_SZ - 1);
+}
+
+//---------------------------------------------------------------------
+char speechBuffer_pull() {
+    speechReadPointer &= (SPEECH_BUF_SZ - 1);
+    speechCount--;
+    return speechBuffer[speechReadPointer++];
+}
+
+//---------------------------------------------------------------------
+// Returns TRUE when buffer empty
+bool speech_buffer_empty(void) {
+  if(0 == speechCount) {
+    return true;
+  }
+  return false;
+}
+
+//---------------------------------------------------------------------
+// Stop all buffered playback
+void speech_Buffer_flush(void) {
+   speechReadPointer = speechWritePointer;
+}
+
+//---------------------------------------------------------------------
+// If the speech buffer is empty return or the audio system is busy - just return
+// else read the next char in the buffer and start playing it.
+void serviceSpeech() {
+  if ( speech_buffer_empty() || audioPromptSD.isPlaying())
+      return;
+
+  char c = speechBuffer_pull();
+  char s[15];
+  if (c == '/') {
+            strcpy(s,"slash.wav");
+  } else if (c == '-') {
+            strcpy(s,"hyphen.wav");
+  } else {
+            strcpy(s,"X.wav");          // Setup dummy filename X.wav
+            s[0] = tolower(c);          // Replace X with our actual char
+  }
+  audioPromptSD.play(s);
+  delay(3);                            // The delay is important!
+}
 
 
