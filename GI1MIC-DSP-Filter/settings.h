@@ -1,7 +1,7 @@
 // Define to compile code for Teensy 3.2 installed inside FT817 using ADC and DAC for audio.
 // Uncomment to use with amplified speaker this enables pullups for filter selection via a button
 // and also sets the audio inputs/outputs to use a Teensy Audio Board.
-//#define FT817                                
+#define FT817                                
 
 
 // Replace with your callsign or comment out to stop spoken callsign on boot
@@ -55,5 +55,5 @@
 // To compile for a CPU Speed of 24Mhz it will be necessary to reduce this value to a
 // value of around 120. Running at 24Mhz reduces power consumption of the Teensy to ~20ma
 // Lower values reduce the quality of the filter and will require less CPU effort.
-#define NUM_COEFFICIENTS 20
+#define NUM_COEFFICIENTS 200
 
