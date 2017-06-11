@@ -2,40 +2,39 @@
 #include "settings.h"
 #include "speech.h"
 
-#ifdef FT817
+#ifdef SDCARD
+  extern AudioPlaySdWav    audioPromptSD;
+  extern AudioPlayMemory   audioPrompt;
+  extern AudioMixer4       audioOutputMixer;  
+#else
   #include <Talkie.h>
   Talkie voice;
   extern AudioPlayMemory   audioPrompt;
   extern AudioMixer4       audioOutputMixer;
-#else
-  extern AudioPlaySdWav    audioPromptSD;
-  extern AudioPlayMemory   audioPrompt;
-  extern AudioMixer4       audioOutputMixer;  
-#endif
 
-/*
- * This is the Morse letter to speech lookup table
- * it is in the same order as the "mySet[]" array
- * ##TEMNAIOGKDWRUS##QZYCXBJP#L#FVH09#8###7#####/-61#######2###3#45
- */
-//const uint8_t* speechLookup[] = {
-//            NULL,       NULL,     spT,    spE,    spM,
-//            spN,        spA,      spI,    spO,    spG,
-//            spK,        spD,      spW,    spR,    spU,
-//            spS,        NULL,     NULL,   spQ,    spZ,
-//            spY,        spC,      spX,    spB,    spJ,
-//            spP,        NULL,     spL,    NULL,   spF,
-//            spV,        spH,      spZERO, spNINE, NULL,
-//            spEIGHT,    NULL,     NULL,   NULL,   spSEVEN,
-//            NULL,       NULL,     NULL,   NULL,   NULL,
-//            spOPERATOR, spMINUS,  spSIX,  spONE,  NULL,
-//            NULL,       NULL,     NULL,   NULL,   NULL,
-//           NULL,       spTWO,    NULL,   NULL,   NULL,
-//            spTHREE,    NULL,     spFOUR, spFIVE
-//};
+  /*
+    * This is the Morse letter to speech lookup table
+    * it is in the same order as the "mySet[]" array
+    * ##TEMNAIOGKDWRUS##QZYCXBJP#L#FVH09#8###7#####/-61#######2###3#45
+  */
+  //const uint8_t* speechLookup[] = {
+  //            NULL,       NULL,     spT,    spE,    spM,
+  //            spN,        spA,      spI,    spO,    spG,
+  //            spK,        spD,      spW,    spR,    spU,
+  //            spS,        NULL,     NULL,   spQ,    spZ,
+  //            spY,        spC,      spX,    spB,    spJ,
+  //            spP,        NULL,     spL,    NULL,   spF,
+  //            spV,        spH,      spZERO, spNINE, NULL,
+  //            spEIGHT,    NULL,     NULL,   NULL,   spSEVEN,
+  //            NULL,       NULL,     NULL,   NULL,   NULL,
+  //            spOPERATOR, spMINUS,  spSIX,  spONE,  NULL,
+  //            NULL,       NULL,     NULL,   NULL,   NULL,
+  //           NULL,       spTWO,    NULL,   NULL,   NULL,
+  //            spTHREE,    NULL,     spFOUR, spFIVE
+  //};
 
 
-const uint8_t* ascii2lpc[] = {
+  const uint8_t* ascii2lpc[] = {
             NULL,       NULL,     NULL,   NULL,   NULL,     //0
             NULL,       NULL,     NULL,   NULL,   NULL,     //5
             NULL,       NULL,     NULL,   spMINUS,NULL,     //10
@@ -61,14 +60,15 @@ const uint8_t* ascii2lpc[] = {
             spN,        spO,      spP,    spQ,    spR,      //110
             spS,        spT,      spU,    spV,    spW,      //115
             spX,        spY,      spZ,    NULL,   NULL,     //120
-};
+  };
 
+#endif
 
 
 //---------------------------------------------------------------------------------
 void speakChar(char c) {
-    #ifdef FT817                        // Use LPC to say the character
-   //     voice.say(ascii2lpc[(int)c]);
+    #ifndef SDCARD                        // Use LPC to say the character
+        voice.say(ascii2lpc[(int)c]);
     #else                               // Otherwise we can use WAV files stored on a SD card
         char s[15];
         if (c == '/') {
@@ -77,7 +77,7 @@ void speakChar(char c) {
             strcpy(s,"hyphen.wav");
         } else {
             strcpy(s,"X.wav");          // Setup dummy filename X
-            s[0] = tolower(c);          // Replace X with our actual char
+            s[0] = toupper(c);          // Replace X with our actual char
         }
         speakSD(s);
     #endif
@@ -101,7 +101,7 @@ void speak(const unsigned int* audioSample) {
 
 //---------------------------------------------------------------
 void speakSD(const char *filename) {
-#ifndef FT817
+#ifdef SDCARD
         #ifdef DEBUG
             Serial.println(filename);
         #endif
@@ -173,6 +173,7 @@ void speech_Buffer_flush(void) {
 // If the speech buffer is empty return or the audio system is busy - just return
 // else read the next char in the buffer and start playing it.
 void serviceSpeech() {
+#ifdef SDCARD
   if ( speech_buffer_empty() || audioPromptSD.isPlaying())
       return;
 
@@ -188,6 +189,7 @@ void serviceSpeech() {
   }
   audioPromptSD.play(s);
   delay(3);                            // The delay is important!
+#endif
 }
 
 

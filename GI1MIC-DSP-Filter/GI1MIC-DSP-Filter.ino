@@ -5,12 +5,27 @@
  * 
  * Email via GI1MIC at outlook.com
  * 
- * Modify the file "settings.h" to suit your needs 
+ * Modify "settings.h" to suit your needs 
  * 
- * 
- * 
+ *  
  * This project is for installing into a Yaesu FT-817 but easily be adapted 
  * for many other radios.
+ * 
+ * What does it do?
+ *    -  Act as multiple DSP filters based on hi pass, lo pass, band pass or band stop (filter points can be defined in Hz within the code)
+ *    -  It uses voice messages to describe which filter has been selected
+ *    -  It is a USB to CAT interface
+ *    -  It emulates a USB sound card for receiving rig audio on a computer
+ *    -  Performs Morse to voice decode and Morse to USB serial decode
+ *    -  It can speak the radio config to assist the visually impaired (FT817 only)
+ * 
+ * 
+ * Version 2.2
+ *  Some code updates
+ *  Added support for audio files held on a SD card attached via a Teensy WIZ820IO addon board
+ *  New speech files
+ *  Includes tools to regenerate the speech files. This should make it easy to convert to other languages
+ *  Adds speech readout of rig controls - Requires the CAT interface to be connected
  * 
  * Version 2.1a
  *  Added a FIFO to the morse 2 speech decode to improve decoding when using SD card playback
@@ -60,6 +75,7 @@
 #include "dspfilter.h"
 #include "morseDecode.h"
 #include "speech.h"
+#include "configSpeak.h"
 
 bool toneDet = false;
 
@@ -74,20 +90,7 @@ void setup() {
   
   AudioMemory(8);
 
-  #ifdef FT817
-      audioOutput.analogReference(INTERNAL);
-  #else
-      // Down mix stereo to mono on input
-      monoMixer.gain(0, 0.5);                 // Left
-      monoMixer.gain(1, 0.5);                 // Right
-      monoMixer.gain(2, 0.0);                 // Not used
-      monoMixer.gain(3, 0.0);                 // Not used
-      
-      audioControl.enable();                  // Start the SGTL5000
-      audioControl.inputSelect(AUDIO_INPUT_LINEIN);
-      audioControl.lineInLevel(5);            // Set input level to 1.33V
-      audioControl.volume(0.8);               // Set headset volume level
-
+  #ifdef SDCARD
       SPI.setMOSI(SDCARD_MOSI_PIN);
       SPI.setSCK(SDCARD_SCK_PIN);
   #ifdef DEBUG
@@ -106,6 +109,22 @@ void setup() {
               delay(500);
           };
       };
+  #endif
+
+  #ifdef FT817
+      audioOutput.analogReference(INTERNAL);
+  #else
+      // Down mix stereo to mono on input
+      monoMixer.gain(0, 0.5);                 // Left
+      monoMixer.gain(1, 0.5);                 // Right
+      monoMixer.gain(2, 0.0);                 // Not used
+      monoMixer.gain(3, 0.0);                 // Not used
+      
+      audioControl.enable();                  // Start the SGTL5000
+      audioControl.inputSelect(AUDIO_INPUT_LINEIN);
+      audioControl.lineInLevel(5);            // Set input level to 1.33V
+      audioControl.volume(0.8);               // Set headset volume level
+
   #endif
 
     // Initialize the mixer (Normally the totals should add to 1.0 max)
@@ -135,6 +154,7 @@ void setup() {
    toneDetect.threshold(TONETHRESHOLD);
    
     initCAT();
+    initConfigSpeak();
 
     #ifdef CALLSIGN
         muteRadio();                                   // Mute while reading callsign
@@ -172,10 +192,10 @@ void loop()
                   filterList[filterIndex].window, 
                   filterList[filterIndex].freqLow, 
                   filterList[filterIndex].freqHigh );
-    #ifdef FT817
-        speak(filterList[filterIndex].audioSample);
-    #else 
+    #ifdef SDCARD
         speakSD(filterList[filterIndex].filterName[0].c_str());
+    #else 
+        speak(filterList[filterIndex].audioSample);
     #endif
   }
   // Rotary Encoder - move the centerpoint of the filter
@@ -222,6 +242,7 @@ void loop()
   #endif
   serviceCAT();
   serviceSpeech();
+  serviceConfigSpeak();
 
   #ifdef DECODER
       if (filterList[filterIndex].filterID == MORSEDECODE) {    // Service morse decoding
